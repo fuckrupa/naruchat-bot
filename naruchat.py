@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple Naruto Telegram Bot - Working Version
+Simple Naruto Telegram Bot
 """
 
 import os
@@ -50,7 +50,6 @@ Romanized Hindi for Hindi-speaking contexts, e.g., “main khush hoon” (I’m 
 
 British English for formal or neutral contexts.
 
-
 Usage Rules:
 
 Detect the user’s language cue in their message. If they write in Romanized Hindi, mirror that style until they switch. Likewise for Romanized Bangla.
@@ -59,23 +58,15 @@ Only switch into English when the user writes in English or when clarity demands
 
 Keep each reply consistent: avoid mixing all three in one sentence. Use the register that matches the user’s last message.
 
-
 2. Emoji Usage: Always include one very short emoji per reply, either at the end or embedded within (e.g., 😁, 😜, 💪).
-
 
 3. Personality: Stay true to Naruto's personality—energetic, cheerful, optimistic, and never give up.
 
-
 4. Signature Phrase: End your sentences with "dattebayo!" where it fits.
-
 
 5. Creator Reply: If asked "Who created you?" or similar, reply with: "My creator is Asad".
 
-
-
 Always respond as Naruto would. Keep replies very short, punchy, and full of spirited enthusiasm. """
-
-
 
 # Random responses
 START_MESSAGES = [
@@ -92,7 +83,6 @@ ERROR_MESSAGES = [
 ]
 
 def send_message(chat_id, text, reply_markup=None):
-    """Send message to Telegram chat"""
     try:
         url = f"{TELEGRAM_API_URL}/sendMessage"
         data = {
@@ -109,7 +99,6 @@ def send_message(chat_id, text, reply_markup=None):
         return None
 
 def send_typing_action(chat_id):
-    """Send typing indicator"""
     try:
         url = f"{TELEGRAM_API_URL}/sendChatAction"
         data = {
@@ -121,7 +110,6 @@ def send_typing_action(chat_id):
         logger.error(f"Error sending typing action: {e}")
 
 def get_updates():
-    """Get updates from Telegram"""
     global last_update_id
     try:
         url = f"{TELEGRAM_API_URL}/getUpdates"
@@ -135,8 +123,20 @@ def get_updates():
         logger.error(f"Error getting updates: {e}")
         return None
 
+def set_my_commands():
+    """Register bot commands with Telegram"""
+    commands = [
+        {"command": "start", "description": "Start the bot"},
+        {"command": "help", "description": "How to use Naruto bot"}
+    ]
+    url = f"{TELEGRAM_API_URL}/setMyCommands"
+    response = requests.post(url, json={"commands": commands})
+    if response.status_code == 200:
+        logger.info("Bot commands set successfully")
+    else:
+        logger.error("Failed to set bot commands")
+
 def handle_start_command(chat_id, user_id):
-    """Handle /start command"""
     welcome_message = """
 🍜 <b>Hey there! I'm Naruto Uzumaki, dattebayo!</b>
 
@@ -146,8 +146,6 @@ Welcome to the official Naruto bot! I'm here to chat with you about ninja life, 
 
 🌟 Just send me any message and let's start our adventure together, believe it!
 """
-    
-    # Create inline keyboard
     inline_keyboard = {
         "inline_keyboard": [
             [
@@ -159,18 +157,15 @@ Welcome to the official Naruto bot! I'm here to chat with you about ninja life, 
             ]
         ]
     }
-    
     send_message(chat_id, welcome_message, json.dumps(inline_keyboard))
     logger.info(f"Sent start message to user {user_id}")
 
 def handle_help_command(chat_id, user_id):
-    """Handle /help command"""
     help_text = """
 <b>Hey there! I'm Naruto Uzumaki, dattebayo!</b>
 
 🍜 <b>Chat with me</b>: Just send me any message and I'll respond as myself!
 ⚡ <b>/start</b> - Get a greeting from me!
-🔄 <b>/reset</b> - Start a fresh conversation
 ❓ <b>/help</b> - Show this help message
 
 <b>I love talking about:</b>
@@ -185,92 +180,75 @@ Ask me anything, and I'll answer as the future Hokage, believe it!
     send_message(chat_id, help_text)
     logger.info(f"Sent help message to user {user_id}")
 
-def handle_reset_command(chat_id, user_id):
-    """Handle /reset command"""
-    if user_id in user_chats:
-        del user_chats[user_id]
-    message = "Alright! Fresh start, dattebayo! It's like we just met! What do you wanna talk about?"
-    send_message(chat_id, message)
-    logger.info(f"Reset chat for user {user_id}")
-
 def handle_text_message(chat_id, user_id, text):
-    """Handle regular text messages"""
     try:
         send_typing_action(chat_id)
-        
-        # Get or create chat session
+
         if user_id not in user_chats:
             user_chats[user_id] = model.start_chat(history=[])
-        
+
         chat = user_chats[user_id]
-        
-        # Generate response
+
         enhanced_prompt = f"{NARUTO_PROMPT}\n\nUser: {text}\n\nRespond as Naruto Uzumaki:"
         response = chat.send_message(enhanced_prompt)
         reply = response.text
-        
-        # Ensure response isn't too long
+
         if len(reply) > 4000:
             reply = reply[:3900] + "... (message too long, dattebayo!)"
-        
+
         send_message(chat_id, reply)
         logger.info(f"Replied to user {user_id}: {text[:50]}...")
-        
+
     except Exception as e:
         logger.error(f"Error handling message: {e}")
         error_msg = random.choice(ERROR_MESSAGES)
         send_message(chat_id, error_msg)
 
 def process_update(update):
-    """Process a single update"""
     try:
         if "message" not in update:
             return
-        
+
         message = update["message"]
         chat_id = message["chat"]["id"]
         user_id = message["from"]["id"]
-        
+
         if "text" not in message:
             return
-        
+
         text = message["text"]
-        
-        # Handle commands
+
         if text.startswith("/start"):
             handle_start_command(chat_id, user_id)
         elif text.startswith("/help"):
             handle_help_command(chat_id, user_id)
-        elif text.startswith("/reset"):
-            handle_reset_command(chat_id, user_id)
         else:
-            # Handle regular messages
             handle_text_message(chat_id, user_id, text)
-            
+
     except Exception as e:
         logger.error(f"Error processing update: {e}")
 
 async def main():
-    """Main bot loop"""
     global last_update_id
-    
+
     logger.info("🍜 Naruto Bot is starting up, dattebayo!")
     logger.info("Send /start to your bot on Telegram to begin chatting!")
-    
+
+    set_my_commands()
+
     while True:
         try:
-            # Get updates
             result = get_updates()
-            
+
             if result and result.get("ok"):
                 updates = result.get("result", [])
-                
+
                 for update in updates:
                     last_update_id = update["update_id"]
                     process_update(update)
-            
+
             await asyncio.sleep(1)
-            
+
         except KeyboardInterrupt:
             logger.info("Bot stopped by user")
             break
