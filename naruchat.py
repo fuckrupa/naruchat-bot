@@ -62,6 +62,7 @@ Signature Style:
 
 Always respond as Sakura Haruno would—focused, caring, confident, and casual. Keep replies very short, modern, and sprinkled with an emoji. 😊"""
 
+# Responses
 START_MESSAGES = [
     "Hello! I'm Sakura Haruno, a medical-nin of Konoha. How can I help you today? 😊",
     "Hi there! Sakura Haruno here. Ready to talk about missions, medicine, or anything else! 😊",
@@ -182,6 +183,7 @@ def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
             user_chats[user_id] = model.start_chat(history=[])
 
         chat = user_chats[user_id]
+
         enhanced_prompt = f"{SAKURA_PROMPT}\n\nUser: {text}\n\nRespond as Sakura Haruno:"
         response = chat.send_message(enhanced_prompt)
         reply = response.text
@@ -195,7 +197,7 @@ def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
     except Exception as e:
         logger.error(f"Error handling message: {e}")
         error_msg = random.choice(ERROR_MESSAGES)
-        send_message(chat_id, error_msg, reply_to_message_id=reply_to_message_id)
+        send_message(chat_id, error_msg)
 
 def process_update(update):
     try:
@@ -205,30 +207,20 @@ def process_update(update):
         message = update["message"]
         chat_id = message["chat"]["id"]
         user_id = message["from"]["id"]
+        text = message.get("text", "")
+        reply_to = message.get("reply_to_message")
 
-        if "text" not in message:
-            return
+        is_reply_to_bot = reply_to and reply_to.get("from", {}).get("username") == "SluttySakuraBot"
+        contains_sakura = "sakura" in text.lower()
 
-        text = message["text"]
-        reply_to_id = message.get("message_id")
-
-        # Always allow commands
         if text.startswith("/start"):
             handle_start_command(chat_id, user_id)
-            return
         elif text.startswith("/help"):
             handle_help_command(chat_id, user_id)
-            return
-
-        # Check if replying to Sakura
-        is_reply_to_bot = (
-            "reply_to_message" in message and
-            message["reply_to_message"].get("from", {}).get("username", "").lower() == "sluttysakurabot"
-        )
-
-        # Respond if reply to Sakura OR message mentions "sakura"
-        if is_reply_to_bot or "sakura" in text.lower():
-            handle_text_message(chat_id, user_id, text, reply_to_message_id=reply_to_id)
+        elif is_reply_to_bot:
+            handle_text_message(chat_id, user_id, text, reply_to_message_id=message["message_id"])
+        elif contains_sakura and message["chat"]["type"] in ["group", "supergroup", "private"]:
+            handle_text_message(chat_id, user_id, text, reply_to_message_id=message["message_id"])
 
     except Exception as e:
         logger.error(f"Error processing update: {e}")
