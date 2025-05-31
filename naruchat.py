@@ -28,14 +28,6 @@ if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
     logger.error("TELEGRAM_TOKEN and GEMINI_API_KEY must be set.")
     exit(1)
 
-# Fetch bot's own ID so we can detect replies to Sakura
-try:
-    me_resp = requests.get(f"{TELEGRAM_API_URL}/getMe").json()
-    BOT_ID = me_resp["result"]["id"]
-except Exception as e:
-    logger.error(f"Failed to get bot info: {e}")
-    exit(1)
-
 # Configure Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
@@ -70,7 +62,6 @@ Signature Style:
 
 Always respond as Sakura Haruno would—focused, caring, confident, and casual. Keep replies very short, modern, and sprinkled with an emoji. 😊"""
 
-# Random responses (Sakura-themed)
 START_MESSAGES = [
     "Hello! I'm Sakura Haruno, a medical-nin of Konoha. How can I help you today? 😊",
     "Hi there! Sakura Haruno here. Ready to talk about missions, medicine, or anything else! 😊",
@@ -84,7 +75,7 @@ ERROR_MESSAGES = [
     "My apologies; I seem to have made a mistake. Please ask again. 😊"
 ]
 
-def send_message(chat_id, text, reply_markup=None, reply_to_message_id=None):
+def send_message(chat_id, text, reply_markup=None):
     try:
         url = f"{TELEGRAM_API_URL}/sendMessage"
         data = {
@@ -94,8 +85,6 @@ def send_message(chat_id, text, reply_markup=None, reply_to_message_id=None):
         }
         if reply_markup:
             data["reply_markup"] = reply_markup
-        if reply_to_message_id:
-            data["reply_to_message_id"] = reply_to_message_id
         response = requests.post(url, json=data)
         return response.json()
     except Exception as e:
@@ -128,7 +117,6 @@ def get_updates():
         return None
 
 def set_my_commands():
-    """Register bot commands with Telegram"""
     commands = [
         {"command": "start", "description": "Start the bot"},
         {"command": "help", "description": "How to use Sakura bot"}
@@ -184,7 +172,7 @@ Ask me anything, and I’ll answer with all my heart. 😊 – Sakura
     send_message(chat_id, help_text)
     logger.info(f"Sent help message to user {user_id}")
 
-def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
+def handle_text_message(chat_id, user_id, text):
     try:
         send_typing_action(chat_id)
 
@@ -192,9 +180,6 @@ def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
             user_chats[user_id] = model.start_chat(history=[])
 
         chat = user_chats[user_id]
-
-        # Construct a new “conversation prompt” that forces the model
-        # to stay in Sakura’s character
         enhanced_prompt = f"{SAKURA_PROMPT}\n\nUser: {text}\n\nRespond as Sakura Haruno:"
         response = chat.send_message(enhanced_prompt)
         reply = response.text
@@ -202,14 +187,13 @@ def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
         if len(reply) > 4000:
             reply = reply[:3900] + "... (message too long, sorry!) 😊"
 
-        # Send reply, referencing the user's message if provided
-        send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
+        send_message(chat_id, reply)
         logger.info(f"Replied to user {user_id}: {text[:50]}...")
 
     except Exception as e:
         logger.error(f"Error handling message: {e}")
         error_msg = random.choice(ERROR_MESSAGES)
-        send_message(chat_id, error_msg, reply_to_message_id=reply_to_message_id)
+        send_message(chat_id, error_msg)
 
 def process_update(update):
     try:
@@ -223,24 +207,24 @@ def process_update(update):
         if "text" not in message:
             return
 
-        text = message["text"].strip()
+        text = message["text"]
 
-        # If it's a reply to Sakura's own message, respond to that directly
-        if "reply_to_message" in message:
-            original = message["reply_to_message"]
-            if "from" in original and original["from"].get("id") == BOT_ID:
-                # Reply to Sakura: generate a response
-                handle_text_message(chat_id, user_id, text, reply_to_message_id=message["message_id"])
-                return
-
-        # If someone types "Sakura" (case-insensitive) without replying, start conversation
-        if text.lower() == "sakura":
-            chosen = random.choice(START_MESSAGES)
-            send_message(chat_id, chosen, reply_to_message_id=message["message_id"])
+        # ✅ Always process commands
+        if text.startswith("/start"):
+            handle_start_command(chat_id, user_id)
+            return
+        elif text.startswith("/help"):
+            handle_help_command(chat_id, user_id)
             return
 
-        # Otherwise, do not respond
-        return
+        # ✅ Only respond if reply to bot OR mentions "sakura"
+        is_reply_to_bot = (
+            "reply_to_message" in message and
+            message["reply_to_message"].get("from", {}).get("username", "").lower() == "sluttysakurabot"
+        )
+
+        if is_reply_to_bot or "sakura" in text.lower():
+            handle_text_message(chat_id, user_id, text)
 
     except Exception as e:
         logger.error(f"Error processing update: {e}")
