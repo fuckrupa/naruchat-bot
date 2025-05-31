@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple Sakura Telegram Bot
+Simple Sakura Telegram Bot with First-Name Personalization
 """
 
 import os
@@ -249,8 +249,8 @@ Ask me anything, and I’ll answer with all my heart. 😊 – Sakura
     send_message(chat_id, help_text)
     logger.info(f"Sent /help to user {user_id}")
 
-# ── Handle a normal text message (either “Sakura” mention or reply to Sakura) ─────
-def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
+# ── Handle a normal text message (injecting the user's first name) ─────────────
+def handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=None):
     try:
         send_typing_action(chat_id)
 
@@ -259,7 +259,21 @@ def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
             user_chats[user_id] = model.start_chat(history=[])
 
         chat = user_chats[user_id]
-        enhanced_prompt = f"{SAKURA_PROMPT}\n\nUser: {text}\n\nRespond as Sakura Haruno:"
+
+        # ── Build an instruction for Gemini to use the user's first name ────────
+        name_instruction = (
+            f"# The user’s first name is “{first_name}”.\n"
+            f"# When you reply, address them by {first_name} sometime in your flirty, "
+            f"sugary-romantic style.\n"
+        )
+
+        enhanced_prompt = (
+            f"{SAKURA_PROMPT}\n\n"
+            f"{name_instruction}"
+            f"User: {text}\n\n"
+            f"Respond as Sakura Haruno:"
+        )
+
         response = chat.send_message(enhanced_prompt)
         reply = response.text
 
@@ -269,7 +283,7 @@ def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
 
         # Send the reply, quoting the original message if reply_to_message_id is set
         send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
-        logger.info(f"Sakura replied to {user_id}: {text[:30]}… → {reply[:30]}…")
+        logger.info(f"Sakura → [{first_name}]: {reply[:30]}…")
 
     except Exception as e:
         logger.error(f"Error in handle_text_message: {e}")
@@ -282,25 +296,16 @@ def process_update(update):
         if "message" not in update:
             return
 
-        message = update["message"]
-        chat_id = message["chat"]["id"]
-        user_id = message["from"]["id"]
-        text = message.get("text", "").strip()
-        reply_to = message.get("reply_to_message")  # None if not a reply
+        message    = update["message"]
+        chat       = message["chat"]
+        chat_id    = chat["id"]
+        chat_type  = chat.get("type", "")
+        user_id    = message["from"]["id"]
+        first_name = message["from"].get("first_name", "").strip()
+        text       = message.get("text", "").strip()
+        reply_to   = message.get("reply_to_message")  # None if not a reply
 
-        # Determine if this message is a reply TO Sakura.
-        # We check if reply_to["from"]["username"] equals the bot’s username.
-        is_reply_to_bot = False
-        if reply_to:
-            from_field = reply_to.get("from", {})
-            # Note: replace "SluttySakuraBot" with your actual bot username if different
-            if from_field.get("username", "").lower() == "sluttysakurabot":
-                is_reply_to_bot = True
-
-        # Determine if the text contains “sakura” (case‐insensitive)
-        contains_sakura = "sakura" in text.lower()
-
-        # ── 1) Always allow /start and /help ───────────────────────────────────────
+        # ── 1) Always allow /start and /help ─────────────────────────────────
         if text.startswith("/start"):
             handle_start_command(chat_id, user_id)
             return
@@ -308,19 +313,32 @@ def process_update(update):
             handle_help_command(chat_id, user_id)
             return
 
-        # ── 2) If this message is a reply to Sakura’s message, respond ────────────
+        # ── 2) If this is a private chat, respond to every text ───────────────
+        if chat_type == "private":
+            logger.info(f"Private message from {first_name} ({user_id}): “{text}” → responding")
+            handle_text_message(chat_id, user_id, first_name, text)
+            return
+
+        # ── 3) In group chats, detect if it’s a reply TO Sakura’s message ──────
+        is_reply_to_bot = False
+        if reply_to:
+            from_field = reply_to.get("from", {})
+            # Replace "SluttySakuraBot" with your actual bot username (without @)
+            if from_field.get("username", "").lower() == "sluttysakurabot":
+                is_reply_to_bot = True
+
         if is_reply_to_bot:
-            logger.info(f"Detected reply to Sakura from user {user_id}: “{text}”")
-            handle_text_message(chat_id, user_id, text, reply_to_message_id=message["message_id"])
+            logger.info(f"Detected reply to Sakura in group {chat_id} by {first_name} ({user_id}): “{text}”")
+            handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=message["message_id"])
             return
 
-        # ── 3) If someone types “Sakura” anywhere (case‐insensitive), respond ────
-        if contains_sakura:
-            logger.info(f"Detected keyword “Sakura” in chat {chat_id} by user {user_id}: “{text}”")
-            handle_text_message(chat_id, user_id, text, reply_to_message_id=message["message_id"])
+        # ── 4) In group chats, if someone types “Sakura”, respond ─────────────
+        if "sakura" in text.lower():
+            logger.info(f"Detected keyword “Sakura” in group {chat_id} by {first_name} ({user_id}): “{text}”")
+            handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=message["message_id"])
             return
 
-        # ── 4) Otherwise, do nothing ──────────────────────────────────────────────
+        # ── 5) Otherwise, do nothing ──────────────────────────────────────────
         return
 
     except Exception as e:
