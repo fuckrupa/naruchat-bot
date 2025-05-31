@@ -147,7 +147,7 @@ Feel free to send me a message and let’s get started. – Sakura
                 {"text": "Support", "url": "https://t.me/TheCryptoElders"}
             ],
             [
-                {"text": "Add Me To Your Group", "url": f"https://t.me/ZapTalkBot?startgroup=true"}
+                {"text": "Add Me To Your Group", "url": f"https://t.me/SluttySakuraBot?startgroup=true"}
             ]
         ]
     }
