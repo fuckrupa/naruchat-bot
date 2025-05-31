@@ -1,5 +1,5 @@
 # 🌸 Sakura Bot — Telegram Bot  
-[![Telegram Bot](https://img.shields.io/badge/Chat%20Now-@SakuraHarunoBot-fd79a8?logo=telegram&style=for-the-badge)](https://t.me/SakuraHarunoBot)
+[![Telegram Bot](https://img.shields.io/badge/Chat%20Now-@SluttySakuraBot-fd79a8?logo=telegram&style=for-the-badge)](https://t.me/SakuraHarunoBot)
 
 **Sakura Bot** is your late-night conversational partner, embodying Sakura Haruno’s intimate, flirty persona.  
 From heartfelt check-ins to playful sticker replies — Sakura’s got you covered.
