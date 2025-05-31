@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple Sakura Telegram Bot with First-Name Personalization
+Simple Sakura Telegram Bot with First-Name Personalization (with sticker-reply support
+and a “choose_sticker” indicator)
 """
 
 import os
@@ -35,6 +36,41 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 # ── In‐memory state ────────────────────────────────────────────────────────────
 user_chats = {}       # Stores Gemini chat objects per user_id
 last_update_id = 0    # For getUpdates offset
+
+# ── Sakura’s sticker IDs ───────────────────────────────────────────────────────
+# Replace these with the actual file_ids you collected from your sticker pack(s):
+sakura_stickers = [
+    "CAACAgUAAxkBAAEOnMFoOwHrL_E-fBs2_aLViJKbHnEKigACUxcAAtArqFXR4hxTLoFOfDYE",  # ► Sakura sticker #1
+    "CAACAgUAAxkBAAEOnMNoOwH0C1-dlOS0RmhQJZaLvlWYkgACthQAAvfkqVXP72iQq0BNejYE",  # ► Sakura sticker #2
+    "CAACAgUAAxkBAAEOnMVoOwH2-i7OyMryUb5UrVCOopGYlAACVhQAAiwMqFUXDEHvVKsJLTYE",  # ► Sakura sticker #3
+    "CAACAgUAAxkBAAEOnMdoOwH6d_QY6h4QDaS2jvj6LwS2wQACmRsAAmwjsFWFJ6owU1WfgTYE",  # ► Sakura sticker #4
+    "CAACAgUAAxkBAAEOnMloOwH-Frc6JYkZHKEk9DJw-soycgACVigAAr4JsVWLUPaAp8o1mDYE",  # ► Sakura sticker #5
+    "CAACAgUAAxkBAAEOnMtoOwIAATk3m5BlXvGe1xkODAEUTQQAAi8WAALHXKlVgsQdmfn20Rg2BA",  # ► Sakura sticker #6
+    "CAACAgUAAxkBAAEOnMxoOwIAAfc-QKEZvoBF6CA3j0_sFloAAtMZAALqQ6lVDLoVOcN6leU2BA",  # ► Sakura sticker #7
+    "CAACAgUAAxkBAAEOnM1oOwIB1s1MYAfCcXJoHGB9cEfrmgACAhkAAjKHqVWAkaO_ky9lTzYE",  # ► Sakura sticker #8
+    "CAACAgUAAxkBAAEOnM9oOwIC3QLrH3-s10uJQJOov6T5OwACKxYAAhspsFV1qXoueKQAAUM2BA",  # ► Sakura sticker #9
+    "CAACAgUAAxkBAAEOnNBoOwICkOoBINNAIIhDzqTBhCyVrgACXxkAAj60sVXgsb-vzSnt_TYE",  # ► Sakura sticker #10
+    "CAACAgUAAxkBAAEOnNJoOwIDTeIOn-fGkTBREAov1JN4IAACuRUAAo2isVWykxNLWnwcYTYE",  # ► Sakura sticker #11
+    "CAACAgUAAxkBAAEOnNNoOwID6iuGApoGCi704xMUDSl8QQACRx4AAp2SqFXcarUkpU5jzjYE",  # ► Sakura sticker #12
+    "CAACAgUAAxkBAAEOnNVoOwIE1c1lhXrYRtpd4L1YHOHt9gACaBQAAu0uqFXKL-cNi_ZBJDYE",  # ► Sakura sticker #13
+    "CAACAgUAAxkBAAEOnNZoOwIEftJuRGfJStGlNvCKNHnNNAACrxgAAtxdsFVMjTuKjuZHZDYE",  # ► Sakura sticker #14
+    "CAACAgUAAxkBAAEOnNdoOwIFa_3I4cjE0I3aPGM83uKt9AACCxcAAidVsFWEt7xrqmGJxjYE",  # ► Sakura sticker #15
+    "CAACAgUAAxkBAAEOnNloOwIFDK96aXtc5JtwyStgnoa7qAACEBkAAg7VqFV6tAlBFHKdPDYE",  # ► Sakura sticker #16
+    "CAACAgUAAxkBAAEOnNpoOwIFQ0cFElvsB0Gz95HNbnMX1QACrhQAArcDsVV3-V8JhPN1qDYE",  # ► Sakura sticker #17
+    "CAACAgUAAxkBAAEOnNxoOwIHJp8uPwABywABD3yH0JJkLPvbAAIgGgACq5exVfoo05pv4lKTNgQ",  # ► Sakura sticker #18
+    "CAACAgUAAxkBAAEOnN1oOwIH2nP9Ki3llmC-o7EWYtitrQACHxUAArG-qFU5OStAsdYoJTYE",  # ► Sakura sticker #19
+    "CAACAgUAAxkBAAEOnN5oOwIHAZfrKdzDbGYxdIKUW2XGWQACsRUAAiqIsVULIgcY4EYPbzYE",  # ► Sakura sticker #20
+    "CAACAgUAAxkBAAEOnOBoOwIIy1dzx-0RLfwHiejWGkAbMAACPxcAArtosFXxg3weTZPx5TYE",  # ► Sakura sticker #21
+    "CAACAgUAAxkBAAEOnOFoOwIIxFn1uQ6a3oldQn0AAfeH4RAAAncUAAIV_KlVtbXva5FrbTs2BA",  # ► Sakura sticker #22
+    "CAACAgUAAxkBAAEOnONoOwIJjSlKKjbxYm9Y91KslMq9TAACtRcAAtggqVVx1D8N-Hwp8TYE",  # ► Sakura sticker #23
+    "CAACAgUAAxkBAAEOnORoOwIJO01PbkilFlnOWgABB_4MvrcAApMTAAJ8krFVr6UvAAFW7tHbNgQ",  # ► Sakura sticker #24
+    "CAACAgUAAxkBAAEOnOVoOwIK09kZqD0XyGaJwtIohkjMZgACQhUAAqGYqFXmCuT6Lrdn-jYE",  # ► Sakura sticker #25
+    "CAACAgUAAxkBAAEOnOdoOwIKG8KS3B5npq2JCQN8KjJRFwACHxgAAvpMqVWpxtBkEZPfPjYE",  # ► Sakura sticker #26
+    "CAACAgUAAxkBAAEOnOhoOwIK5X_qo6bmnv_zDBLnHDGo-QAC6x4AAiU7sVUROxvmQwqc0zYE",  # ► Sakura sticker #27
+    "CAACAgUAAxkBAAEOnOpoOwILxbwdCAdV9Mv8qMAM1HhMswACnhMAAilDsVUIsplzTkTefTYE",  # ► Sakura sticker #28
+    "CAACAgUAAxkBAAEOnOtoOwIMlqIEofu7G1aSAAERkLRXZvwAAugYAAI-W7FVTuh9RbnOGIo2BA",  # ► Sakura sticker #29
+    "CAACAgUAAxkBAAEOnO1oOwINU_GIGSvoi1Y_2xf8UKEcUwACuxQAAmn2qFXgLss7TmYQkzYE",  # ► Sakura sticker #30
+]
 
 # ── Sakura personality prompt ─────────────────────────────────────────────────
 SAKURA_PROMPT = """
@@ -163,17 +199,57 @@ def send_message(chat_id, text, reply_to_message_id=None, reply_markup=None):
         logger.error(f"Error sending message: {e}")
         return None
 
-# ── Utility: send “typing…” action so it looks like Sakura is typing ────────────
-def send_typing_action(chat_id):
+# ── Utility: send “chat action” so it looks like Sakura is doing something ────────
+def send_chat_action(chat_id, action="typing"):
+    """
+    Use action="typing" to show “… is typing”.
+    Use action="choose_sticker" to show “… is choosing a sticker”.
+    """
     try:
         url = f"{TELEGRAM_API_URL}/sendChatAction"
         data = {
             "chat_id": chat_id,
-            "action": "typing"
+            "action": action
         }
         requests.post(url, json=data)
     except Exception as e:
-        logger.error(f"Error sending typing action: {e}")
+        logger.error(f"Error sending chat action: {e}")
+
+# ── Utility: send a sticker (with optional reply_to_message_id) ───────────────
+def send_sticker(chat_id, sticker_file_id, reply_to_message_id=None):
+    """
+    Send a sticker to `chat_id`. If `reply_to_message_id` is set,
+    Sakura will reply to that specific message with the sticker.
+    """
+    try:
+        url = f"{TELEGRAM_API_URL}/sendSticker"
+        data = {
+            "chat_id": chat_id,
+            "sticker": sticker_file_id
+        }
+        if reply_to_message_id:
+            data["reply_to_message_id"] = reply_to_message_id
+        response = requests.post(url, json=data)
+        return response.json()
+    except Exception as e:
+        logger.error(f"Error sending sticker: {e}")
+        return None
+
+# ── Utility: send a random Sakura sticker ──────────────────────────────────────
+def send_random_sakura_sticker(chat_id, reply_to_message_id=None):
+    """
+    Chooses one sticker_file_id at random from sakura_stickers,
+    shows “choosing a sticker” action, then sends it.
+    """
+    if not sakura_stickers:
+        return
+
+    # 1) Show “Sakura is choosing a sticker…” indicator
+    send_chat_action(chat_id, action="choose_sticker")
+
+    # 2) Pick random sticker and send
+    sticker_id = random.choice(sakura_stickers)
+    send_sticker(chat_id, sticker_id, reply_to_message_id=reply_to_message_id)
 
 # ── Poll Telegram for new updates ────────────────────────────────────────────────
 def get_updates():
@@ -252,9 +328,10 @@ Ask me anything, and I’ll answer with all my heart. 😊 – Sakura
 # ── Handle a normal text message (injecting the user's first name) ─────────────
 def handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=None):
     try:
-        send_typing_action(chat_id)
+        # Show “typing…” indicator before generating reply
+        send_chat_action(chat_id, action="typing")
 
-        # If this is the first time this user chats, create a new Gemini “chat” for them
+        # If this is the first time this user chats, create a new Gemini chat for them
         if user_id not in user_chats:
             user_chats[user_id] = model.start_chat(history=[])
 
@@ -281,7 +358,7 @@ def handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=
         if len(reply) > 4000:
             reply = reply[:3900] + "... (message too long, sorry!) 😊"
 
-        # Send the reply, quoting the original message if reply_to_message_id is set
+        # Send the reply, quoting the original message if needed
         send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
         logger.info(f"Sakura → [{first_name}]: {reply[:30]}…")
 
@@ -319,23 +396,53 @@ def process_update(update):
             handle_text_message(chat_id, user_id, first_name, text)
             return
 
-        # ── 3) In group chats, detect if it’s a reply TO Sakura’s message ──────
+        # ── 2.5) If someone REPLIES to Sakura’s message with a STICKER ─────────
+        if reply_to:
+            from_field = reply_to.get("from", {})
+            # Replace "sluttysakurabot" with your actual bot username (no “@”)
+            if from_field.get("username", "").lower() == "sluttysakurabot":
+                # Check if incoming message contains a sticker
+                if "sticker" in message:
+                    logger.info(f"Detected user replied with a sticker to Sakura's message (chat: {chat_id}).")
+                    # Sakura chooses and sends a random sticker back
+                    send_random_sakura_sticker(
+                        chat_id,
+                        reply_to_message_id=message["message_id"]
+                    )
+                    return
+
+        # ── 3) In group chats, detect if it’s a reply TO Sakura’s text message ───
         is_reply_to_bot = False
         if reply_to:
             from_field = reply_to.get("from", {})
-            # Replace "SluttySakuraBot" with your actual bot username (without @)
             if from_field.get("username", "").lower() == "sluttysakurabot":
                 is_reply_to_bot = True
 
         if is_reply_to_bot:
-            logger.info(f"Detected reply to Sakura in group {chat_id} by {first_name} ({user_id}): “{text}”")
-            handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=message["message_id"])
+            logger.info(
+                f"Detected reply to Sakura in group {chat_id} by {first_name} ({user_id}): “{text}”"
+            )
+            handle_text_message(
+                chat_id,
+                user_id,
+                first_name,
+                text,
+                reply_to_message_id=message["message_id"]
+            )
             return
 
         # ── 4) In group chats, if someone types “Sakura”, respond ─────────────
         if "sakura" in text.lower():
-            logger.info(f"Detected keyword “Sakura” in group {chat_id} by {first_name} ({user_id}): “{text}”")
-            handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=message["message_id"])
+            logger.info(
+                f"Detected keyword “Sakura” in group {chat_id} by {first_name} ({user_id}): “{text}”"
+            )
+            handle_text_message(
+                chat_id,
+                user_id,
+                first_name,
+                text,
+                reply_to_message_id=message["message_id"]
+            )
             return
 
         # ── 5) Otherwise, do nothing ──────────────────────────────────────────
