@@ -28,6 +28,14 @@ if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
     logger.error("TELEGRAM_TOKEN and GEMINI_API_KEY must be set.")
     exit(1)
 
+# Fetch bot's own ID so we can detect replies to Sakura
+try:
+    me_resp = requests.get(f"{TELEGRAM_API_URL}/getMe").json()
+    BOT_ID = me_resp["result"]["id"]
+except Exception as e:
+    logger.error(f"Failed to get bot info: {e}")
+    exit(1)
+
 # Configure Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-1.5-flash")
@@ -76,7 +84,7 @@ ERROR_MESSAGES = [
     "My apologies; I seem to have made a mistake. Please ask again. 😊"
 ]
 
-def send_message(chat_id, text, reply_markup=None):
+def send_message(chat_id, text, reply_markup=None, reply_to_message_id=None):
     try:
         url = f"{TELEGRAM_API_URL}/sendMessage"
         data = {
@@ -86,6 +94,8 @@ def send_message(chat_id, text, reply_markup=None):
         }
         if reply_markup:
             data["reply_markup"] = reply_markup
+        if reply_to_message_id:
+            data["reply_to_message_id"] = reply_to_message_id
         response = requests.post(url, json=data)
         return response.json()
     except Exception as e:
@@ -174,7 +184,7 @@ Ask me anything, and I’ll answer with all my heart. 😊 – Sakura
     send_message(chat_id, help_text)
     logger.info(f"Sent help message to user {user_id}")
 
-def handle_text_message(chat_id, user_id, text):
+def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
     try:
         send_typing_action(chat_id)
 
@@ -192,13 +202,14 @@ def handle_text_message(chat_id, user_id, text):
         if len(reply) > 4000:
             reply = reply[:3900] + "... (message too long, sorry!) 😊"
 
-        send_message(chat_id, reply)
+        # Send reply, referencing the user's message if provided
+        send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
         logger.info(f"Replied to user {user_id}: {text[:50]}...")
 
     except Exception as e:
         logger.error(f"Error handling message: {e}")
         error_msg = random.choice(ERROR_MESSAGES)
-        send_message(chat_id, error_msg)
+        send_message(chat_id, error_msg, reply_to_message_id=reply_to_message_id)
 
 def process_update(update):
     try:
@@ -212,14 +223,24 @@ def process_update(update):
         if "text" not in message:
             return
 
-        text = message["text"]
+        text = message["text"].strip()
 
-        if text.startswith("/start"):
-            handle_start_command(chat_id, user_id)
-        elif text.startswith("/help"):
-            handle_help_command(chat_id, user_id)
-        else:
-            handle_text_message(chat_id, user_id, text)
+        # If it's a reply to Sakura's own message, respond to that directly
+        if "reply_to_message" in message:
+            original = message["reply_to_message"]
+            if "from" in original and original["from"].get("id") == BOT_ID:
+                # Reply to Sakura: generate a response
+                handle_text_message(chat_id, user_id, text, reply_to_message_id=message["message_id"])
+                return
+
+        # If someone types "Sakura" (case-insensitive) without replying, start conversation
+        if text.lower() == "sakura":
+            chosen = random.choice(START_MESSAGES)
+            send_message(chat_id, chosen, reply_to_message_id=message["message_id"])
+            return
+
+        # Otherwise, do not respond
+        return
 
     except Exception as e:
         logger.error(f"Error processing update: {e}")
