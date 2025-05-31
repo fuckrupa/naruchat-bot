@@ -52,3 +52,35 @@ Whether you’re looking to:
 
 ---
 
+# 🌸 Sakura Bot
+
+A cute and charming Telegram bot that brings soft chats, sweet flirts, and a cozy vibe to your day.
+
+---
+
+## 🌸 Getting Started
+
+1. Visit [@SakuraBot](https://t.me/SakuraBot) on Telegram  
+2. Press `/start`  
+3. Pick a vibe or command  
+4. Dive into sweet chats and cute moments!
+
+---
+
+## 👤 Creator
+
+Crafted with love by **Asadul Islam (Asad)**  
+Telegram: [@SakuraBot](https://t.me/SakuraBot)
+
+---
+
+## 📄 License
+
+This bot is built for wholesome fun and free use.  
+**Attribution is appreciated — spread love, not shade.**
+
+---
+
+> **Sakura Bot** — *Soft talks. Sweet vibes.*  
+[Start now → @SakuraBot](https://t.me/SakuraBot)
+
