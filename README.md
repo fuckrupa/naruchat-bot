@@ -52,7 +52,7 @@ Whether you’re looking to:
 
 ---
 
-# 🌸 Sakura Bot
+## 🌸 Sakura Bot
 
 A cute and charming Telegram bot that brings soft chats, sweet flirts, and a cozy vibe to your day.
 
