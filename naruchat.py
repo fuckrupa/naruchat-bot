@@ -201,7 +201,7 @@ def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
 
         # Send the reply, quoting the original message if reply_to_message_id is set
         send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
-        logger.info(f“Sakura replied to {user_id}: {text[:30]}… → {reply[:30]}…")
+        logger.info(f"Sakura replied to {user_id}: {text[:30]}… → {reply[:30]}…")
 
     except Exception as e:
         logger.error(f"Error in handle_text_message: {e}")
