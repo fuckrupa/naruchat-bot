@@ -75,7 +75,7 @@ ERROR_MESSAGES = [
     "My apologies; I seem to have made a mistake. Please ask again. 😊"
 ]
 
-def send_message(chat_id, text, reply_markup=None):
+def send_message(chat_id, text, reply_to_message_id=None, reply_markup=None):
     try:
         url = f"{TELEGRAM_API_URL}/sendMessage"
         data = {
@@ -83,6 +83,8 @@ def send_message(chat_id, text, reply_markup=None):
             "text": text,
             "parse_mode": "HTML"
         }
+        if reply_to_message_id:
+            data["reply_to_message_id"] = reply_to_message_id
         if reply_markup:
             data["reply_markup"] = reply_markup
         response = requests.post(url, json=data)
@@ -149,7 +151,7 @@ Feel free to send me a message and let’s get started. – Sakura
             ]
         ]
     }
-    send_message(chat_id, welcome_message, json.dumps(inline_keyboard))
+    send_message(chat_id, welcome_message, reply_markup=json.dumps(inline_keyboard))
     logger.info(f"Sent start message to user {user_id}")
 
 def handle_help_command(chat_id, user_id):
@@ -172,7 +174,7 @@ Ask me anything, and I’ll answer with all my heart. 😊 – Sakura
     send_message(chat_id, help_text)
     logger.info(f"Sent help message to user {user_id}")
 
-def handle_text_message(chat_id, user_id, text):
+def handle_text_message(chat_id, user_id, text, reply_to_message_id=None):
     try:
         send_typing_action(chat_id)
 
@@ -187,13 +189,13 @@ def handle_text_message(chat_id, user_id, text):
         if len(reply) > 4000:
             reply = reply[:3900] + "... (message too long, sorry!) 😊"
 
-        send_message(chat_id, reply)
+        send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
         logger.info(f"Replied to user {user_id}: {text[:50]}...")
 
     except Exception as e:
         logger.error(f"Error handling message: {e}")
         error_msg = random.choice(ERROR_MESSAGES)
-        send_message(chat_id, error_msg)
+        send_message(chat_id, error_msg, reply_to_message_id=reply_to_message_id)
 
 def process_update(update):
     try:
@@ -208,8 +210,9 @@ def process_update(update):
             return
 
         text = message["text"]
+        reply_to_id = message.get("message_id")
 
-        # ✅ Always process commands
+        # Always allow commands
         if text.startswith("/start"):
             handle_start_command(chat_id, user_id)
             return
@@ -217,14 +220,15 @@ def process_update(update):
             handle_help_command(chat_id, user_id)
             return
 
-        # ✅ Only respond if reply to bot OR mentions "sakura"
+        # Check if replying to Sakura
         is_reply_to_bot = (
             "reply_to_message" in message and
             message["reply_to_message"].get("from", {}).get("username", "").lower() == "sluttysakurabot"
         )
 
+        # Respond if reply to Sakura OR message mentions "sakura"
         if is_reply_to_bot or "sakura" in text.lower():
-            handle_text_message(chat_id, user_id, text)
+            handle_text_message(chat_id, user_id, text, reply_to_message_id=reply_to_id)
 
     except Exception as e:
         logger.error(f"Error processing update: {e}")
