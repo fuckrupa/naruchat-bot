@@ -384,13 +384,33 @@ def handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=
 
         chat = user_chats[user_id]
 
-        # ── Build an instruction for Gemini to use the user's first name ────────
-        name_instruction = (
-            f"# The user’s first name is “{first_name}”.\n"
-            f"# When you reply, address them by {first_name} sometime in your flirty, "
-            f"sugary-romantic style.\n"
-        )
+        # ── 1) Normalize the user’s incoming text ────────────────────────────
+        normalized = text.lower().strip()
 
+        # ── 2) Check for simple greetings ──────────────────────────────────
+        greeting_keywords = {"hi", "hello", "hey", "namaste", "konichiwa"}
+        is_greeting = normalized in greeting_keywords
+
+        # ── 3) Check for “emotional” keywords ──────────────────────────────
+        # Add or remove words as you like—these are examples of strong emotions.
+        emotional_keywords = {
+            "sad", "lonely", "anxiety", "anxious", "depressed", 
+            "heartbroken", "upset", "failed", "tired", "hurt"
+        }
+        # Split on whitespace and see if any emotional word appears
+        contains_emotion = any(word in normalized.split() for word in emotional_keywords)
+
+        # ── 4) Build name_instruction only when greeting OR emotional ─────
+        if is_greeting or contains_emotion:
+            name_instruction = (
+                f"# The user’s first name is “{first_name}”.\n"
+                f"# When you reply, address them by {first_name} sometime in your flirty, "
+                f"sugary-romantic style.\n"
+            )
+        else:
+            name_instruction = ""  # no forced name usage here
+
+        # ── 5) Assemble the final prompt to send to Gemini ─────────────────
         enhanced_prompt = (
             f"{SAKURA_PROMPT}\n\n"
             f"{name_instruction}"
@@ -398,14 +418,15 @@ def handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=
             f"Respond as Sakura Haruno:"
         )
 
+        # ── 6) Send to Gemini and get Sakura’s reply ───────────────────────
         response = chat.send_message(enhanced_prompt)
         reply = response.text
 
-        # Trim if it’s absurdly long
+        # Trim if it’s excessively long
         if len(reply) > 4000:
             reply = reply[:3900] + "... (message too long, sorry!) 😊"
 
-        # Send the reply, quoting the original message if needed
+        # ── 7) Send Sakura’s reply back to Telegram ────────────────────────
         send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
         logger.info(f"Sakura → [{first_name}]: {reply[:30]}…")
 
