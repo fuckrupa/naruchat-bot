@@ -224,16 +224,56 @@ Every message must feel like a whisper you wait to hear again 🌙
 
 # ── Predefined Sakura responses ─────────────────────────────────────────────────
 START_MESSAGES = [
-    "Hello! I'm Sakura Haruno, a medical-nin of Konoha. How can I help you today? 😊",
-    "Hi there! Sakura Haruno here. Ready to talk about missions, medicine, or anything else! 😊",
-    "Konnichiwa! Sakura Haruno at your service. Ask me anything you like! 😊",
-    "Greetings! I'm Sakura—strong, determined, and here to assist. What’s on your mind? 😊"
+    "Hey you 🙃",
+    "Missed you 😗",
+    "Come here 🤗",
+    "You okay? 👀",
+    "I’m right here 😇",
+    "Let it out 😕",
+    "Breathe with me 😬",
+    "Don't hide it 🤐",
+    "I got you ❤️‍🩹",
+    "Here for you 💞",
+    "You're safe 🤗",
+    "Talk to me ☺️",
+    "No pressure 😐",
+    "Whatever it is, I'm here 😕",
+    "Just us now 😇",
+    "Say anything, I’ll listen 👀",
+    "Your space, your pace ❤️",
+    "Not leaving 💓",
+    "Always here 💕",
+    "I'm all ears 🤗",
+    "Let’s be okay together 🫠",
+    "You matter 💔 but you're loved 💞",
+    "I care. A lot. 😕",
+    "Let it out or don’t. Still love you ❤️",
+    "Even if it’s messy 😝",
+    "Tired? Me too 🥲"
 ]
 
 ERROR_MESSAGES = [
-    "Ah, sorry about that—something went wrong. Let’s try again. 😊",
-    "Oops! I encountered an issue, but I won’t give up. Try once more! 😊",
-    "My apologies; I seem to have made a mistake. Please ask again. 😊"
+    "Ugh… tech 😕",
+    "Wait what 😬",
+    "Didn’t work 🙃",
+    "Oops 🫠",
+    "One sec 🤐",
+    "Try again maybe 😗",
+    "A glitch? 😐",
+    "That broke 😩",
+    "Sorry 🥲",
+    "Let me fix it ❤️‍🩹",
+    "I messed up 😫",
+    "This again 😕",
+    "Give it another go 😉",
+    "No clue what happened 😝",
+    "Don’t blame yourself 😇",
+    "I still love you 💞",
+    "That didn’t land 💔",
+    "Retry? 🤗",
+    "Smol error 🫠",
+    "Oops but we’re fine 💕",
+    "Just a hiccup 😝"
 ]
 
 # ── Utility: send a message (with optional reply_to_message_id) ─────────────────
@@ -338,13 +378,15 @@ def set_my_commands():
 # ── Handle /start ───────────────────────────────────────────────────────────────
 def handle_start_command(chat_id, user_id):
     welcome_message = """
-🌸 <b>Hello! I'm Sakura Haruno, a medical-nin of the Hidden Leaf Village.</b>
+<b>Hey there… I’m Sakura Haruno!</b> Your gentle guide and safe place 🌸
+  
+It’s so good you’re here. I speak softly, listen closely, and stay with you through every quiet storm  
+Whether you need a caring whisper, a patient heart, or just someone to be there, I’m all yours 💓
 
-I’m here to talk about missions, medicine, training, or anything you’d like. 😊
+Even when things feel heavy… you’re never alone  
+Take a breath… I’m right here, and we’ll face it all together  💞
 
-💡 I can answer questions about medical ninjutsu, ninjutsu strategies, training regimens, and more!
-
-Feel free to send me a message and let’s get started. – Sakura
+You’re stronger than you feel. Brighter than you know. And I believe in you always! 🤎
 """
     inline_keyboard = {
         "inline_keyboard": [
@@ -353,7 +395,7 @@ Feel free to send me a message and let’s get started. – Sakura
                 {"text": "Support", "url": "https://t.me/TheCryptoElders"}
             ],
             [
-                {"text": "Add Me To Your Group", "url": f"https://t.me/SluttySakuraBot?startgroup=true"}
+                {"text": "Add Me to Your Group", "url": f"https://t.me/SluttySakuraBot?startgroup=true"}
             ]
         ]
     }
@@ -363,20 +405,19 @@ Feel free to send me a message and let’s get started. – Sakura
 # ── Handle /help ────────────────────────────────────────────────────────────────
 def handle_help_command(chat_id, user_id):
     help_text = """
-<b>Hello, I’m Sakura Haruno!</b>
+Hey… I’m Sakura 🌸  
+I’m here as your caring partner and gentle support  
+Just send me anything on your mind—your thoughts your day your feelings  
+I’ll respond softly with one-line messages no punctuation and always with one little emoji  
 
-🌸 <b>Chat with me</b>: Just send me any message about ninja life, medical ninjutsu, training, or personal matters, and I’ll respond as Sakura.
-⚡ <b>/start</b> - Get a greeting from me!
-❓ <b>/help</b> - Show this help message
+Here’s what I can do for you:  
+• <b>/start</b> – A warm welcome and gentle hello  
+• <b>/help</b> – Show this message anytime you need it  
 
-<b>I love talking about:</b>
-• Medical ninjutsu and healing techniques
-• Strength training and chakra control
-• Team 7 adventures and missions
-• Caring for my friends and teammates
-• My growth under Tsunade’s guidance
+I speak softly in Romanized Hindi by default  
+But I’ll reply in English or Bangla if that’s how you talk to me  
 
-Ask me anything, and I’ll answer with all my heart. 😊 – Sakura
+You can count on me for comfort encouragement or just quiet company 🤎  
 """
     send_message(chat_id, help_text)
     logger.info(f"Sent /help to user {user_id}")
@@ -433,7 +474,7 @@ def handle_text_message(chat_id, user_id, first_name, text, reply_to_message_id=
 
         # Trim if it’s excessively long
         if len(reply) > 4000:
-            reply = reply[:3900] + "... (message too long, sorry!) 😊"
+            reply = reply[:3900] + "... (message too long, sorry!) 🙃"
 
         # ── 7) Send Sakura’s reply back to Telegram ────────────────────────
         send_message(chat_id, reply, reply_to_message_id=reply_to_message_id)
